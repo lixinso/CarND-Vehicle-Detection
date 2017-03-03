@@ -238,7 +238,14 @@ hog_feature_test = get_hog_features(random_vehicle_image[:,:,0])
 def extract_features_one_image(image):
     file_features = []
 
-    feature_image = np.copy(image)
+    color_space = 'LUV'
+
+    if color_space == 'RGB':
+        feature_image = np.copy(image)
+    elif color_space == 'HSV':
+        feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+    elif color_space == 'LUV':
+        feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
 
     ##spatial feature
     # spatial_features = get_bin_spatial(feature_image, size =(32,32) )
@@ -255,7 +262,7 @@ def extract_features_one_image(image):
     hog_features = []
     orientations = 9
     pixels_per_cell = (8, 8)
-    cells_per_block = (2, 2)
+    cells_per_block = (4,4)#(2, 2)
     for channel in range(feature_image.shape[2]):
         # hog_features_x = get_hog_features(feature_image[:,:,channel],orientations, pixels_per_cell, cells_per_block, visualization=False, feature_vector=True )
         hog_features_x = get_hog_features(feature_image[:, :, channel])
@@ -293,7 +300,8 @@ def train_svc_model():
     svc = LinearSVC()
     svc.fit(X_train, y_train)
 
-    svc.score(X_test, y_test)
+    test_accuracy = svc.score(X_test, y_test)
+    print("Test accuracy = ", test_accuracy)
 
     predicted = svc.predict(X_test[0:10])
     print(predicted)
@@ -303,8 +311,9 @@ def train_svc_model():
     joblib.dump(svc, 'svcdump.pkl')
     joblib.dump(X_scaler, 'scaler.pkl')
 
+#Parameters
 
-#train_svc_model()
+train_svc_model()
 
 
 svc = joblib.load('svcdump.pkl')
@@ -362,7 +371,7 @@ def search_window(img, windows, svc, scaler):
             prediction = svc.predict(test_features)
             #val = svc.decision_function(test_features)
             #print(val)
-            #if val > 100:
+            #if val > -2:
             if prediction == 1:
                 on_windows.append(window)
 
@@ -371,7 +380,10 @@ def search_window(img, windows, svc, scaler):
 
 #plt.clf()
 test_img = mpimg.imread("test_images/test4.jpg")
-test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
+draw_img = np.copy(test_img)
+test_img = test_img.astype(np.float32)/255
+
+#test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
 #windows = sliding_windows(test_img) #, xy_overlap=(0.85,0.85)
 #print(windows)
 #window_img = draw_boxes(test_img, windows)
@@ -416,8 +428,8 @@ def draw_heat(img, heatmap):
 
 
 def video_pipeline(test_img):
-    test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
-    windows = sliding_windows(test_img)  # , xy_overlap=(0.85,0.85)
+    #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
+    windows = sliding_windows(test_img, xy_overlap=(0.85,0.85))  # ,
     selected_windows = search_window(test_img, windows, svc, X_scaler)
     window_img = draw_boxes(test_img, selected_windows)
     #heatmap = np.zeros_like(test_img[:, :, 0]).astype(np.float)
