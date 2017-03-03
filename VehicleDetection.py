@@ -313,7 +313,7 @@ def train_svc_model():
 
 #Parameters
 
-train_svc_model()
+#train_svc_model()
 
 
 svc = joblib.load('svcdump.pkl')
@@ -380,6 +380,7 @@ def search_window(img, windows, svc, scaler):
 
 #plt.clf()
 test_img = mpimg.imread("test_images/test4.jpg")
+test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
 draw_img = np.copy(test_img)
 test_img = test_img.astype(np.float32)/255
 
@@ -404,7 +405,7 @@ def add_heat(heatmap, boxes):
     for box in boxes:
         heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
 
-    heatmap[heatmap < 1] = 0
+    heatmap[heatmap <= 4] = 0
     return heatmap
 
 def draw_heat(img, heatmap):
@@ -432,17 +433,18 @@ def video_pipeline(test_img):
     windows = sliding_windows(test_img, xy_overlap=(0.85,0.85))  # ,
     selected_windows = search_window(test_img, windows, svc, X_scaler)
     window_img = draw_boxes(test_img, selected_windows)
-    #heatmap = np.zeros_like(test_img[:, :, 0]).astype(np.float)
-    #heatmap = add_heat(heatmap, windows)
-    #heatmap = np.clip(heatmap - 2, 0, 255)
 
-    #return heatmap
-    return window_img
+    heatmap = np.zeros_like(test_img[:, :, 0]).astype(np.float)
+    heatmap = add_heat(heatmap, selected_windows)
+    heatmap = np.clip(heatmap - 2, 0, 255)
+    heat_image = draw_heat(test_img, heatmap)
+    return heat_image
+    #return window_img
 
 heatmap = video_pipeline(test_img)
 plt.clf()
 plt.imshow(heatmap, cmap='hot')
-#heat_image = draw_heat(test_img, heatmap)
+#
 #plt.imshow(heat_image)
 plt.show()
 
