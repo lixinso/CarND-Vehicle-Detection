@@ -382,7 +382,7 @@ def search_window(img, windows, svc, scaler):
 test_img = mpimg.imread("test_images/test4.jpg")
 test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
 draw_img = np.copy(test_img)
-test_img = test_img.astype(np.float32)/255
+
 
 #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
 #windows = sliding_windows(test_img) #, xy_overlap=(0.85,0.85)
@@ -429,6 +429,8 @@ def draw_heat(img, heatmap):
 
 
 def video_pipeline(test_img):
+    backup_img = np.copy(test_img)
+    test_img = test_img.astype(np.float32) / 255
     #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
     windows = sliding_windows(test_img, xy_overlap=(0.85,0.85))  # ,
     selected_windows = search_window(test_img, windows, svc, X_scaler)
@@ -437,21 +439,34 @@ def video_pipeline(test_img):
     heatmap = np.zeros_like(test_img[:, :, 0]).astype(np.float)
     heatmap = add_heat(heatmap, selected_windows)
     heatmap = np.clip(heatmap - 2, 0, 255)
-    heat_image = draw_heat(test_img, heatmap)
+    heat_image = draw_heat(backup_img, heatmap)
+
+    draw = False
+    if draw:
+        plt.clf()
+        plt.imshow(heat_image)
+        plt.show()
+
     return heat_image
     #return window_img
 
 heatmap = video_pipeline(test_img)
-plt.clf()
-plt.imshow(heatmap, cmap='hot')
+#plt.clf()
+#plt.imshow(heatmap, cmap='hot')
+#plt.imshow(heatmap)
 #
 #plt.imshow(heat_image)
-plt.show()
+#plt.show()
 
 
 from moviepy.editor import VideoFileClip
-output_video = "project_video_processed.mp4"
+output_video = "test_video_processed.mp4"
 video_clip = VideoFileClip("test_video.mp4")
+output_clip = video_clip.fl_image(video_pipeline)
+output_clip.write_videofile(output_video,audio=False)
+
+output_video = "project_video_processed.mp4"
+video_clip = VideoFileClip("project_video.mp4")
 output_clip = video_clip.fl_image(video_pipeline)
 output_clip.write_videofile(output_video,audio=False)
 
