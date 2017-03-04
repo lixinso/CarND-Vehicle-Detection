@@ -33,7 +33,14 @@ When extract the features, different color space generate various quality of res
 
 #### Spatial Binning
 
-### Histogram of Oriented Gradients (HOG)
+Use  color_space = 'RGB' to calculate the spatial binning
+![Spatial Binning](output_images/spatial_binning.png)
+
+
+#### Histogram of Oriented Gradients (HOG)
+
+Use all hog channel to calculate the HOG.
+Block set as 4*4 and pixels per cell as 16x16 get better result than (8,8) and 2x2
 
 features = hog(img, orientations=9, pixels_per_cell=(8,8),
                        cells_per_block=(2,2),transform_sqrt=False,
@@ -42,6 +49,7 @@ features = hog(img, orientations=9, pixels_per_cell=(8,8),
 
 #### Color Histogram
 
+Get histogram feature for all 3 color space dimension, RED, GREEN, BLUE, as histogram features.
 
 ### Train Model
 
@@ -77,10 +85,11 @@ With test image, the sliding windows shows as follow.
 ![Sliding Window ](output_images/slidding_window.png)
 
 
-
 ####2. Search window and find car in window.
 
 With each sliding window, use the trained svc model to predicted if the window is car or not. If yes, find the the window.
+When choosing which window is car, we didn't use only the predict result, but also use the decision function score. Here I set score > 2.
+score = svc.decision_function(test_features)
 
 Use selected car window, select the overlap > N. Use the overlap window to generate the heatmap.
 When generate the heatmap, I need to filter out the recognized window that is not significant(not enough overlap), first I choose overlap as > 4, the result of the rectangle is too small since not enough overlap.  overlap > 2 generate too many wrong detection. Then finally I choose overlap >3.
@@ -105,12 +114,12 @@ Project video processed.
 
 ![Processed Project Video](./project_video_processed.mp4)
 
-####2.
-
-###
 
 ---
 
 ###Discussion
 
-####1.
+#### For case like image2, need filter lower confident predict result.
+#### Better to track the object, follow the object change will make the detection more accurate
+
+

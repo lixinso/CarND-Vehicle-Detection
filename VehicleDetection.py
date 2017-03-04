@@ -213,10 +213,10 @@ def image_spatial_binning(img_orig, size=(32, 32), display=False):
 
 #spatial_binning_test = image_spatial_binning(random_vehicle_image, display=True)
 
-def get_hog_features(img):
+def get_hog_features(img, cells_per_block = (2,2), pixels_per_cell=(8,8)):
     orientation = 9
-    pixels_per_cell = (8,8)
-    cells_per_block = (2,2)
+    #pixels_per_cell = (8,8)
+    #cells_per_block = (2,2)
     visualization=False
     feature_vector=True
 
@@ -233,7 +233,7 @@ def get_hog_features(img):
                        visualise=False, feature_vector=feature_vector)
         return features
 
-hog_feature_test = get_hog_features(random_vehicle_image[:,:,0])
+hog_feature_test = get_hog_features(random_vehicle_image[:,:,0], cells_per_block = (4,4), pixels_per_cell=(16,16) )
 
 def extract_features_one_image(image):
     file_features = []
@@ -265,8 +265,8 @@ def extract_features_one_image(image):
     cells_per_block = (4,4)#(2, 2)
     for channel in range(feature_image.shape[2]):
         # hog_features_x = get_hog_features(feature_image[:,:,channel],orientations, pixels_per_cell, cells_per_block, visualization=False, feature_vector=True )
-        hog_features_x = get_hog_features(feature_image[:, :, channel])
-
+        hog_features_x = get_hog_features(feature_image[:, :, channel], cells_per_block = (4,4), pixels_per_cell=(16,16))
+        #hog_features_x2 = get_hog_features(feature_image[:, :, channel], (2,2))
         hog_features.extend(hog_features_x)
 
     hog_features = np.ravel(hog_features)
@@ -372,16 +372,18 @@ def search_window(img, windows, svc, scaler):
             #val = svc.decision_function(test_features)
             #print(val)
             #if val > -2:
-            if prediction == 1:
+            score = svc.decision_function(test_features)
+            if score > 2:
+            #if prediction == 1:
                 on_windows.append(window)
 
     return on_windows
 
 
 #plt.clf()
-test_img = mpimg.imread("test_images/test4.jpg")
+#test_img = mpimg.imread("test_images/test4.jpg")
 #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
-draw_img = np.copy(test_img)
+#draw_img = np.copy(test_img)
 
 
 #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
@@ -405,8 +407,8 @@ def add_heat(heatmap, boxes):
     for box in boxes:
         heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
 
-    #heatmap[heatmap <= 4] = 0
-    heatmap[heatmap <= 2] = 0
+    heatmap[heatmap <= 4] = 0
+    #heatmap[heatmap <= 2] = 0
     return heatmap
 
 def draw_heat(img, heatmap):
@@ -458,8 +460,20 @@ def video_pipeline(test_img, draw=False):
     return heat_image
     #return window_img
 
-test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
-heatmap = video_pipeline(test_img, draw=True)
+def test_pipeline(image_name):
+    test_img = mpimg.imread(image_name)
+    test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+    heatmap = video_pipeline(test_img, draw=True)
+    #cv2.
+
+test_pipeline("test_images/test1.jpg")
+test_pipeline("test_images/test2.jpg")
+test_pipeline("test_images/test3.jpg")
+test_pipeline("test_images/test4.jpg")
+test_pipeline("test_images/test5.jpg")
+test_pipeline("test_images/test6.jpg")
+
+
 #plt.clf()
 #plt.imshow(heatmap, cmap='hot')
 #plt.imshow(heatmap)
