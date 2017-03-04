@@ -34,8 +34,8 @@ When extract the features, different color space generate various quality of res
 #### Spatial Binning
 
 Use  color_space = 'RGB' to calculate the spatial binning
-![Spatial Binning](output_images/spatial_binning.png)
-
+![Spatial Binning](output_images/spatial_binning_origin.png)
+![Spatial Binning](output_images/spatial_binning_features.png)
 
 #### Histogram of Oriented Gradients (HOG)
 
