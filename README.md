@@ -84,6 +84,9 @@ Use selected car window, select the overlap > N. Use the overlap window to gener
 
 Then use the heatmap to generate the final rectangle.
 
+The final rectangle with test images
+
+![Final Vehicle Detection](output_images/final_rectangle.png)
 
 ---
 
