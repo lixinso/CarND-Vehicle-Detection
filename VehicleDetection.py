@@ -380,7 +380,7 @@ def search_window(img, windows, svc, scaler):
 
 #plt.clf()
 test_img = mpimg.imread("test_images/test4.jpg")
-test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
+#test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
 draw_img = np.copy(test_img)
 
 
@@ -405,7 +405,8 @@ def add_heat(heatmap, boxes):
     for box in boxes:
         heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
 
-    heatmap[heatmap <= 4] = 0
+    #heatmap[heatmap <= 4] = 0
+    heatmap[heatmap <= 2] = 0
     return heatmap
 
 def draw_heat(img, heatmap):
@@ -427,21 +428,28 @@ def draw_heat(img, heatmap):
 #heatmap = add_heat(heatmap, windows)
 #heatmap = np.clip(heatmap-2, 0, 255)
 
+#np.set_printoptions(threshold=np.nan)
 
-def video_pipeline(test_img):
+def video_pipeline(test_img, draw=False):
+    test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
     backup_img = np.copy(test_img)
     test_img = test_img.astype(np.float32) / 255
     #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
     windows = sliding_windows(test_img, xy_overlap=(0.85,0.85))  # ,
     selected_windows = search_window(test_img, windows, svc, X_scaler)
     window_img = draw_boxes(test_img, selected_windows)
-
+    #np.set_printoptions(threshold=np.nan)
     heatmap = np.zeros_like(test_img[:, :, 0]).astype(np.float)
     heatmap = add_heat(heatmap, selected_windows)
-    heatmap = np.clip(heatmap - 2, 0, 255)
+    print(heatmap)
+    print("\n\n\n")
+    #heatmap = np.clip(heatmap - 2, 0, 255)
+    heatmap = np.clip(heatmap, 0, 255)
+    print(heatmap)
+    print("\n\n\n")
     heat_image = draw_heat(backup_img, heatmap)
 
-    draw = False
+    #draw = True
     if draw:
         plt.clf()
         plt.imshow(heat_image)
@@ -450,7 +458,8 @@ def video_pipeline(test_img):
     return heat_image
     #return window_img
 
-heatmap = video_pipeline(test_img)
+test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+heatmap = video_pipeline(test_img, draw=True)
 #plt.clf()
 #plt.imshow(heatmap, cmap='hot')
 #plt.imshow(heatmap)
