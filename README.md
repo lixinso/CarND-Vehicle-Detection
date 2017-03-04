@@ -29,6 +29,8 @@ Here are the random chosen image for vehicle and non-vehicle.
 
 ###Feature Extraction
 
+When extract the features, different color space generate various quality of result. RGB and HSV didn't provide good enough quality, the LUV color space generate the best quality.
+
 #### Spatial Binning
 
 ### Histogram of Oriented Gradients (HOG)
@@ -81,6 +83,7 @@ With test image, the sliding windows shows as follow.
 With each sliding window, use the trained svc model to predicted if the window is car or not. If yes, find the the window.
 
 Use selected car window, select the overlap > N. Use the overlap window to generate the heatmap.
+When generate the heatmap, I need to filter out the recognized window that is not significant(not enough overlap), first I choose overlap as > 4, the result of the rectangle is too small since not enough overlap.  overlap > 2 generate too many wrong detection. Then finally I choose overlap >3.
 
 Then use the heatmap to generate the final rectangle.
 
