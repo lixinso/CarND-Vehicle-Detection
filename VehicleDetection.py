@@ -189,13 +189,14 @@ def image_spatial_binning(img_orig, size=(32, 32), display=False):
 
     if display == True:
 
+        '''
         f = plt.figure(figsize=(3,3))
         ax1 = f.add_subplot(1,3,1)
         f.tight_layout()
         matplotlib.rc('xtick', labelsize=20)
         matplotlib.rc('ytick', labelsize=20)
         ax1.imshow(img_orig)
-        ax1.set_title('Original Image:\n', fontsize=20)
+        ax1.set_title('Original\n', fontsize=20)
 
         ax2 = f.add_subplot(1,3,2)
         ax2.imshow(small_img_8x8)
@@ -207,14 +208,26 @@ def image_spatial_binning(img_orig, size=(32, 32), display=False):
         plt.show()
 
         plt.savefig("output_images/spatial_binning.png")
+        '''
 
+        plt.clf()
+        plt.imshow(img_orig)
+        plt.savefig("output_images/spatial_binning_origin.png")
+
+        plt.clf()
+        plt.imshow(small_img_8x8)
+        plt.savefig("output_images/spatial_binning_8x8.png")
+
+        plt.clf()
+        plt.plot(features)
+        plt.savefig("output_images/spatial_binning_features.png")
 
     return features
 
-#spatial_binning_test = image_spatial_binning(random_vehicle_image, display=True)
+spatial_binning_test = image_spatial_binning(random_vehicle_image, display=True)
 
 def get_hog_features(img, cells_per_block = (2,2), pixels_per_cell=(8,8)):
-    orientation = 9
+    orientation = 8#9
     #pixels_per_cell = (8,8)
     #cells_per_block = (2,2)
     visualization=False
@@ -234,6 +247,14 @@ def get_hog_features(img, cells_per_block = (2,2), pixels_per_cell=(8,8)):
         return features
 
 hog_feature_test = get_hog_features(random_vehicle_image[:,:,0], cells_per_block = (4,4), pixels_per_cell=(16,16) )
+
+def extract_features_one_image2(image):
+    #image_yuv = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
+    image_yuv = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
+    features_y=get_hog_features(image_yuv[:,:,0])
+    features_u=get_hog_features(image_yuv[:,:,1])
+    features_v=get_hog_features(image_yuv[:,:,2])
+    return np.concatenate((features_y, features_u, features_v))
 
 def extract_features_one_image(image):
     file_features = []
@@ -278,8 +299,10 @@ def extract_features_one_image(image):
 def extract_features(images):
     features = []
     for file in tqdm(images):
-        img = mpimg.imread(file)
-        concatenate_file_features = extract_features_one_image(img)
+        #img = mpimg.imread(file)
+        img = cv2.imread(file)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        concatenate_file_features = extract_features_one_image2(img)
         features.append(concatenate_file_features)
 
     return features
@@ -307,6 +330,9 @@ def train_svc_model():
     print(predicted)
     print(y_test[0:10])
 
+    predicted_score = svc.decision_function(X_test[0:10])
+    print(predicted_score)
+
 
     joblib.dump(svc, 'svcdump.pkl')
     joblib.dump(X_scaler, 'scaler.pkl')
@@ -319,7 +345,9 @@ def train_svc_model():
 svc = joblib.load('svcdump.pkl')
 X_scaler = joblib.load('scaler.pkl')
 #predicted = svc.predict(X_test[0:10])
+#predicted_score = svc.decision_function(X_test[0:10])
 #print(predicted)
+#print(predicted_score)
 
 
 def sliding_windows(img, x_start_stop=[None, None], y_start_stop=[None,None], xy_window=(64,64), xy_overlap=(0.5,0.5)):
@@ -352,20 +380,37 @@ def sliding_windows(img, x_start_stop=[None, None], y_start_stop=[None,None], xy
 
     return window_list
 
+def sliding_windows_multiple(img, x_start_stop=[None, None], y_start_stop=[None,None], xy_windows=[(64,64)], xy_overlaps=[(0.5,0.5)]):
 
+    windows_result_multiple = []
+    for ii in range(len(xy_windows)):
+        xy_window = xy_windows[ii]
+        xy_overlap = xy_overlaps[ii]
 
-def draw_boxes(img, bboxes, color=(0,0,255), thickness=6):
+        windows_result = sliding_windows(img, x_start_stop=x_start_stop, y_start_stop=y_start_stop, xy_window=xy_window, xy_overlap=xy_overlap)
+        windows_result_multiple += windows_result
+
+    return windows_result_multiple
+
+def draw_boxes(img, bboxes, color=(255,0,0), thickness=6):
     img_copy = np.copy(img)
     for bbox in bboxes:
         cv2.rectangle(img_copy, bbox[0], bbox[1], color, thickness)
     return img_copy
 
-def search_window(img, windows, svc, scaler):
+
+def search_window(img, windows, svc, scaler, threshold_score=2):
+    global unrecognized_idx
+    try:
+        unrecognized_idx
+    except:
+        unrecognized_idx = 0
+
     on_windows = []
     for window in windows:
         if window[1][1] < img.shape[0] and window[1][0] < img.shape[1]:
             test_img = cv2.resize(img[window[0][1]:window[1][1], window[0][0]: window[1][0]], (64, 64))
-            features = extract_features_one_image(test_img)
+            features = extract_features_one_image2(test_img)
             features_reshaped = np.array(features).reshape(1,-1)
             test_features = scaler.transform(features_reshaped)
             prediction = svc.predict(test_features)
@@ -373,12 +418,60 @@ def search_window(img, windows, svc, scaler):
             #print(val)
             #if val > -2:
             score = svc.decision_function(test_features)
-            if score > 2:
+            if score > threshold_score:
             #if prediction == 1:
                 on_windows.append(window)
 
+                if False:
+
+
+                    save_file_name = "output_images/unrecognized/unrecognized_" + str(unrecognized_idx) + ".png"
+                    test_img_save = cv2.cvtColor(test_img,cv2.COLOR_RGB2BGR)
+
+                    #plt.clf()
+                    #plt.imshow(test_img)
+                    #plt.show()
+
+                    #plt.clf()
+                    #plt.imshow(test_img_save)
+                    #plt.show()
+
+                    cv2.imwrite(save_file_name, test_img_save)
+                    #plt.show()
+                    #plt.savefig()
+                    unrecognized_idx = unrecognized_idx + 1
+
+
     return on_windows
 
+def validate_model(file_name):
+    #test_img = mpimg.imread(file_name)
+    test_img = cv2.imread(file_name)
+    #test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+    test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
+    #backup_img = np.copy(test_img)
+    #test_img = test_img.astype(np.float32) / 255 #float32 => 64
+    test_img = cv2.resize(test_img, (64, 64))
+    #test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+    #plt.clf()
+    #plt.imshow(test_img)
+    #plt.show()
+
+    features = extract_features_one_image2(test_img)
+    features_reshaped = np.array(features).reshape(1, -1)
+    test_features = X_scaler.transform(features_reshaped)
+    prediction = svc.predict(test_features)
+    # val = svc.decision_function(test_features)
+    # print(val)
+    # if val > -2:
+    score = svc.decision_function(test_features)
+    print(score, prediction)
+
+#validate_model("res/non-vehicles/Extras/extra3883.png")
+#validate_model("res/non-vehicles/Extras/extra1.png")
+validate_model("output_images/unrecognized/unrecognized_0.png")
+validate_model("output_images/unrecognized/unrecognized_65.png")
+#validate_model("output_images/unrecognized/unrecognized_6.jpg")
 
 #plt.clf()
 #test_img = mpimg.imread("test_images/test4.jpg")
@@ -403,11 +496,13 @@ def search_window(img, windows, svc, scaler):
 
 
 ##heatmap
-def add_heat(heatmap, boxes):
+def add_heat(heatmap, boxes, threshold_overlay=5):
     for box in boxes:
         heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
 
-    heatmap[heatmap <= 4] = 0
+    maxvalue = np.max(heatmap)
+
+    heatmap[heatmap <= threshold_overlay] = 0
     #heatmap[heatmap <= 2] = 0
     return heatmap
 
@@ -432,17 +527,21 @@ def draw_heat(img, heatmap):
 
 #np.set_printoptions(threshold=np.nan)
 
-def video_pipeline(test_img, draw=False):
+def video_pipeline(test_img, draw=False,threshold_overlay=5, threshold_score=2):
     test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
     backup_img = np.copy(test_img)
-    test_img = test_img.astype(np.float32) / 255
+    #test_img = test_img.astype(np.float32) / 255
     #test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB)
-    windows = sliding_windows(test_img, xy_overlap=(0.85,0.85))  # ,
-    selected_windows = search_window(test_img, windows, svc, X_scaler)
+    windows = sliding_windows(test_img, xy_overlap=(0.85,0.85))
+
+    windows = sliding_windows_multiple(test_img,xy_windows=[(64, 64),(128, 80),(224,100),(96,64)], xy_overlaps=[(0.85,0.85),(0.9,0.9),(0.9,0.9),(0.9,0.9)])
+
+
+    selected_windows = search_window(test_img, windows, svc, X_scaler,threshold_score=threshold_score)
     window_img = draw_boxes(test_img, selected_windows)
     #np.set_printoptions(threshold=np.nan)
     heatmap = np.zeros_like(test_img[:, :, 0]).astype(np.float)
-    heatmap = add_heat(heatmap, selected_windows)
+    heatmap = add_heat(heatmap, selected_windows, threshold_overlay=threshold_overlay)
     print(heatmap)
     print("\n\n\n")
     #heatmap = np.clip(heatmap - 2, 0, 255)
@@ -453,6 +552,11 @@ def video_pipeline(test_img, draw=False):
 
     #draw = True
     if draw:
+
+        plt.clf()
+        plt.imshow(window_img)
+        plt.show()
+
         plt.clf()
         plt.imshow(heat_image)
         plt.show()
@@ -460,18 +564,51 @@ def video_pipeline(test_img, draw=False):
     return heat_image
     #return window_img
 
-def test_pipeline(image_name):
-    test_img = mpimg.imread(image_name)
-    test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
-    heatmap = video_pipeline(test_img, draw=True)
-    #cv2.
+def save_image(image, file_name):
+    plt.clf()
+    plt.imshow(image)
+    plt.savefig(file_name)
 
-test_pipeline("test_images/test1.jpg")
-test_pipeline("test_images/test2.jpg")
-test_pipeline("test_images/test3.jpg")
-test_pipeline("test_images/test4.jpg")
-test_pipeline("test_images/test5.jpg")
-test_pipeline("test_images/test6.jpg")
+def test_pipeline(folder_name, image_name, threshold_overlay, threshold_score):
+    #test_img = mpimg.imread(folder_name + image_name)
+    test_img = cv2.imread(folder_name + image_name)
+    #test_img = cv2.cvtColor(test_img, cv2.COLOR_RGB2BGR)
+    heatmap = video_pipeline(test_img, draw=False,threshold_overlay=threshold_overlay, threshold_score=threshold_score)
+    dir_folder = "output_images/" + "threshold_overlay_" + str(threshold_overlay) + "_threshold_overlay_" + str(threshold_score) + "/"
+    if not os.path.exists(dir_folder):
+        os.mkdir(dir_folder)
+    output_image_name = dir_folder + image_name + "_processed2.jpg"
+    save_image(heatmap, output_image_name)
+    print(output_image_name + "\tprocessed\n")
+    #cv2.
+testcases = [{"threshold_overlay": 15, "threshold_score": 2}]
+
+def test_case(threshold_overlay, threshold_score):
+
+    test_pipeline("test_images/", "test1.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test2.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test3.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test4.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test5.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test6.jpg",threshold_overlay, threshold_score)
+    print("threshold_overlay",threshold_overlay, "threshold_score", threshold_score, " Done")
+
+test_case(5,1)
+test_case(10,1)
+test_case(15,1)
+test_case(20,1)
+
+test_case(5,2)
+test_case(10,2)
+test_case(15,2)
+test_case(20,2)
+
+test_case(10,0)
+test_case(15,0)
+test_case(20,0)
+test_case(30,0)
+test_case(40,0)
+
 
 
 #plt.clf()
@@ -486,6 +623,7 @@ from moviepy.editor import VideoFileClip
 output_video = "test_video_processed.mp4"
 video_clip = VideoFileClip("test_video.mp4")
 output_clip = video_clip.fl_image(video_pipeline)
+output_clip.preview()
 output_clip.write_videofile(output_video,audio=False)
 
 output_video = "project_video_processed.mp4"

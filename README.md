@@ -51,6 +51,10 @@ features = hog(img, orientations=9, pixels_per_cell=(8,8),
 
 Get histogram feature for all 3 color space dimension, RED, GREEN, BLUE, as histogram features.
 
+#### Feature selection comparation
+
+By combining different feature selection combinations, the hog channels with using all HSV channels works best.
+
 ### Train Model
 
 StandardScaler().fit(X)
@@ -100,6 +104,13 @@ The final rectangle with test images
 
 ![Final Vehicle Detection](output_images/final_rectangle.png)
 
+### Optimizer
+
+There are a lot of parameters to select, manually choose parameter takes longer time to run and verify the result.
+
+For some of the parameters, such as decision_functions score threshold and overlay number threshold, I wrote a test function 'test_case' to try different parameter combinations and save the result into different folders.
+The result shows threshold_overlay = 5, threshold_score = 2 get the best result.
+
 ---
 
 ### Video Implementation
@@ -121,5 +132,14 @@ Project video processed.
 
 #### For case like image2, need filter lower confident predict result.
 #### Better to track the object, follow the object change will make the detection more accurate
-
+#### Speed can be improved.
+#### Sliding window size need to be optimized, now it cost too long time to get a result of an image.
+#### Maybe pipeline is not ready to work in real world
+Since it cost too long time. It's better to reuse the image result from previous frame, it may save a lot of time and make the result more real time, the change also may not jump too much.
+#### Left lane images are not well recognized.
+I think one reason is that the model didn't use the reversed image to train.  If we train the model to recognize the left side cars, better to train the model to identify the direction of the car, same direction or against the car.
+#### False positives such as shadows.
+To solve this problems, use different ways to extract features, also generate more labeled data for that.
+#### CNN
+Another solution to use CNN to classify the car vs non-car
 
