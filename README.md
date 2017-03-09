@@ -29,7 +29,7 @@ Here are the random chosen image for vehicle and non-vehicle.
 
 ###Feature Extraction
 
-When extract the features, different color space generate various quality of result. RGB and HSV didn't provide good enough quality, the LUV color space generate the best quality.
+When extract the features, different color space generate various quality of result.
 
 #### Spatial Binning
 
@@ -88,6 +88,10 @@ Test search with window (64,64), overlap rate = 0.5
 With test image, the sliding windows shows as follow.
 ![Sliding Window ](output_images/slidding_window.png)
 
+The project video finally use combinations of sliding window size to detect windows.
+[(64, 64),(128, 80),(224,100),(96,64)], xy_overlaps=[(0.85,0.85),(0.9,0.9),(0.9,0.9),(0.9,0.9)])
+
+
 
 ####2. Search window and find car in window.
 
@@ -96,7 +100,37 @@ When choosing which window is car, we didn't use only the predict result, but al
 score = svc.decision_function(test_features)
 
 Use selected car window, select the overlap > N. Use the overlap window to generate the heatmap.
-When generate the heatmap, I need to filter out the recognized window that is not significant(not enough overlap), first I choose overlap as > 4, the result of the rectangle is too small since not enough overlap.  overlap > 2 generate too many wrong detection. Then finally I choose overlap >3.
+When generate the heatmap, I need to filter out the recognized window that is not significant(not enough overlap), first I choose overlap as > 4, the result of the rectangle is too small since not enough overlap.  overlap > 2 generate too many wrong detection.
+Then finally wrote a function to compare the combinations of the params:
+
+def test_case(threshold_overlay, threshold_score):
+
+    test_pipeline("test_images/", "test1.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test2.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test3.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test4.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test5.jpg",threshold_overlay, threshold_score)
+    test_pipeline("test_images/", "test6.jpg",threshold_overlay, threshold_score)
+    print("threshold_overlay",threshold_overlay, "threshold_score", threshold_score, " Done")
+
+test_case(5,1)
+test_case(10,1)
+test_case(15,1)
+test_case(20,1)
+
+test_case(5,2)
+test_case(10,2)
+test_case(15,2)
+test_case(20,2)
+
+test_case(10,0)
+test_case(15,0)
+test_case(20,0)
+test_case(30,0)
+test_case(40,0)
+
+
+Finally, I choose overlap threshold == 5 and score threshold == 2.
 
 Then use the heatmap to generate the final rectangle.
 
